@@ -1,3 +1,5 @@
+import std/sets
+
 type
   Node = ref object
     value: int
@@ -5,6 +7,7 @@ type
     prev, next: Node
 
   View = ref object
+    head: Node
     middle: Node
     leftlen, rightlen: int
     doublemiddle: bool
@@ -19,15 +22,28 @@ proc findHead(n: Node): Node =
   while result.prev != nil:
     result = result.prev
 
-iterator iterValues(n: Node): int =
+iterator iter(n: Node): Node =
   var cur = n
   while cur != nil:
-    yield cur.value
+    yield cur
     cur = cur.next
+
+iterator iterValues(n: Node): int =
+  for c in n.iter():
+    yield c.value
+
+proc toCoordsSeq(n: Node): seq[(int, int)] =
+  for v in n.iter():
+    result.add(v.coords)
+
+proc toValSeq(n: Node): seq[int] =
+  for v in n.iterValues():
+    result.add(v)
 
 proc insert(v: View, x: int, coords: (int, int)) = 
   if v.middle == nil:
     v.middle = newNode(x, coords)
+    v.head = v.middle
     return
 
   if x < v.middle.value:
@@ -44,6 +60,7 @@ proc insert(v: View, x: int, coords: (int, int)) =
         # cut off remaining tail and connect
         if x >= cur.value:
           cur.value = x
+          cur.coords = coords
           cur.next = nil
           v.rightlen = curlen
           break
@@ -70,7 +87,9 @@ proc insert(v: View, x: int, coords: (int, int)) =
     temp.next = v.middle
 
     if v.doublemiddle:
-      v.middle.prev = v.middle.prev.prev
+      var t = v.middle
+      v.middle = t.prev
+      v.middle.next = t.next
       v.doublemiddle = false
 
     # can be seen from left by definition
@@ -80,13 +99,18 @@ proc insert(v: View, x: int, coords: (int, int)) =
     if (v.middle.next != nil and v.middle.next.value != v.middle.value) or v.middle.next.isNil() and not v.doublemiddle:
       # move middle to duplicate
       var n = newNode(x, coords)
-      n.next = v.middle.next
+      #n.next = v.middle.next
       v.middle.next = n
       n.prev = v.middle
       v.middle = n
       v.rightlen = 0
       v.doublemiddle = true
     else:
+      if v.doublemiddle:
+        var temp = v.middle
+        v.middle = temp.prev
+        v.middle.next = temp.next
+        v.doublemiddle = false
       v.middle.next = nil
       v.rightlen = 0
 
@@ -99,7 +123,7 @@ var
   rowviews: seq[View]
 
 var x, y = 0
-for line in lines("smallinp.txt"):
+for line in lines("input.txt"):
   if line.len() == 0:
     continue
 
@@ -108,7 +132,6 @@ for line in lines("smallinp.txt"):
       colviews.add(View(middle : nil))
   rowviews.add(View(middle : nil))
   
-
   x = 0
   for c in line:
     let b = cast[byte](c) - 48
@@ -121,14 +144,23 @@ for line in lines("smallinp.txt"):
   inc y
 
 
-echo "####"
-for v in colviews[0].middle.findHead().iterValues():
-  echo v
-echo "####"
+var
+  othercount = 0
+  seentrees: HashSet[(int, int)]
+for v in rowviews:
+  assert v.head == v.middle.findHead()
+  for t in v.head.iter():
+    seentrees.incl(t.coords)
+
+  othercount += v.size()
 
 for v in colviews:
-  echo v.size
-  echo v.leftlen
-  echo v.rightlen
-  echo "---"
+  assert v.head == v.middle.findHead()
+  for t in v.head.iter():
+    if t.coords in seentrees:
+      dec othercount
 
+  othercount += v.size()
+
+dec othercount
+echo othercount
