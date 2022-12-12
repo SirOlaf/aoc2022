@@ -40,6 +40,8 @@ proc toValSeq(n: Node): seq[int] =
   for v in n.iterValues():
     result.add(v)
 
+# Wanted to see if it was possible to do a line without changing direction.
+# Turns out it is, but it's not very practical
 proc insert(v: View, x: int, coords: (int, int)) = 
   if v.middle == nil:
     v.middle = newNode(x, coords)
